@@ -14,7 +14,7 @@ dataSources:
       apiVersion: 0.0.4
       language: wasm/assemblyscript
       entities:
-        - Approval #Emitted when the allowance of a `spender` for an `owner` is set by a call to {approve}. `value` is the new allowance.
+        - Approval #Emitted when the allowance of a `spender` for an `owner` is set by a call to {approve}.(`value` is the new allowance).
         - Borrow #Emitted when funds are borrowed from pool(borrower Borrower address, amount Amount of funds borrowed from pool, fee Fees collected from this transaction)
         - Collected #Emitted when fees are collected(beneficiary Account to receive fees, amount Amount of fees collected)
         - Exited #Emitted when someone exits the pool(staker Account exiting, amount Amount unstaking)

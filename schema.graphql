@@ -20,6 +20,6 @@ type Staker @entity{
 type Borrower @entity{
   id: ID!
   debt: BigDecimal!  #funds borrowed-funds repaided
-  joinedAtBlockNumber: BigInt
+  joinedAtBlockNumber: BigInt!
   repayedLoanAtBlockNumber: BigInt
 }

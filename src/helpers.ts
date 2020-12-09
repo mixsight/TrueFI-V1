@@ -4,7 +4,6 @@ import { Staker, Borrower, Allowance } from "../generated/schema"
 export let ZERO_BI = BigInt.fromI32(0)
 export let ZERO_BD = BigDecimal.fromString('0')
 
-
 export function createStaker(address: Address): void {
 	let stkr = Staker.load(address.toHexString())
 	if (stkr === null) {
