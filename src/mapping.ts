@@ -1,6 +1,6 @@
-import { BigInt } from "@graphprotocol/graph-ts"
+import { BigInt, BigDecimal } from '@graphprotocol/graph-ts'
+
 import {
-  Contract,
   Approval,
   Borrow,
   Collected,
@@ -13,90 +13,98 @@ import {
   Repaid,
   Transfer
 } from "../generated/Contract/Contract"
-import { ExampleEntity } from "../generated/schema"
+
+import { Staker, Borrower, Allowance } from "../generated/schema"
+
+import {
+  createStaker,
+  createBorrower
+ } from './helpers'
 
 export function handleApproval(event: Approval): void {
-  // Entities can be loaded from the store using a string ID; this ID
-  // needs to be unique across all entities of the same type
-  let entity = ExampleEntity.load(event.transaction.from.toHex())
-
-  // Entities only exist after they have been saved to the store;
-  // `null` checks allow to create entities on demand
-  if (entity == null) {
-    entity = new ExampleEntity(event.transaction.from.toHex())
-
-    // Entity fields can be set using simple assignments
-    entity.count = BigInt.fromI32(0)
-  }
-
-  // BigInt and BigDecimal math are supported
-  entity.count = entity.count + BigInt.fromI32(1)
-
-  // Entity fields can be set based on event parameters
-  entity.owner = event.params.owner
-  entity.spender = event.params.spender
-
-  // Entities can be written to the store with `.save()`
-  entity.save()
-
-  // Note: If a handler doesn't require existing field values, it is faster
-  // _not_ to load the entity from the store. Instead, create it fresh with
-  // `new Entity(...)`, set the fields that should be updated and save the
-  // entity back to the store. Fields that were not set or unset remain
-  // unchanged, allowing for partial updates to be applied.
-
-  // It is also possible to access smart contracts from mappings. For
-  // example, the contract that has emitted the event can be connected to
-  // with:
-  //
-  // let contract = Contract.bind(event.address)
-  //
-  // The following functions can then be called on this contract to access
-  // state variables and other data:
-  //
-  // - contract._currencyToken(...)
-  // - contract._curveGauge(...)
-  // - contract._curvePool(...)
-  // - contract._lender(...)
-  // - contract._minter(...)
-  // - contract._uniRouter(...)
-  // - contract.allowance(...)
-  // - contract.approve(...)
-  // - contract.balanceOf(...)
-  // - contract.calcTokenAmount(...)
-  // - contract.calcWithdrawOneCoin(...)
-  // - contract.claimableFees(...)
-  // - contract.currencyToken(...)
-  // - contract.decimals(...)
-  // - contract.decreaseAllowance(...)
-  // - contract.increaseAllowance(...)
-  // - contract.joiningFee(...)
-  // - contract.name(...)
-  // - contract.owner(...)
-  // - contract.poolValue(...)
-  // - contract.symbol(...)
-  // - contract.totalSupply(...)
-  // - contract.transfer(...)
-  // - contract.transferFrom(...)
-  // - contract.yTokenBalance(...)
+	let allow = new Allowance(event.address.toHexString())
+	allow.owner = event.params.owner  //return Bytes
+	allow.spender = event.params.spender  //return Bytes
+	allow.value = event.params.value.toBigDecimal()
+	allow.save()
 }
 
-export function handleBorrow(event: Borrow): void {}
+export function handleBorrow(event: Borrow): void {
+	let brwr = Borrower.load(event.params.borrower.toHexString()) as Borrower
+	if ( brwr === null){
+		createBorrower(event.params.borrower)
+		brwr.debt = event.params.amount.toBigDecimal()
+		brwr.joinedAtBlockNumber = event.block.number
+	} else {
+		brwr = Borrower.load(event.params.borrower.toHexString()) as Borrower
+		brwr.debt = brwr.debt.plus(event.params.amount.toBigDecimal())
+	}
+	brwr.save()
+}
 
-export function handleCollected(event: Collected): void {}
+export function handleCollected(event: Collected): void {
+	let stkr = Staker.load(event.params.beneficiary.toHexString()) as Staker
+	stkr.profit = event.params.amount.toBigDecimal()
+	stkr.save()
+}
 
-export function handleExited(event: Exited): void {}
+export function handleExited(event: Exited): void {
+	let stkr = Staker.load(event.params.staker.toHexString()) as Staker
+	stkr.joinedPool = false
+	stkr.stake = stkr.stake.minus(event.params.amount.toBigDecimal())
+	stkr.mintedLT = stkr.mintedLT.minus(event.params.amount.toBigDecimal()) // 1:1 ratio of LoanTokens to original funds
+	stkr.profit = stkr.profit.minus(stkr.profit)
+	stkr.exitedAtBlockNumber = event.block.number
+	stkr.save()
+}
 
-export function handleFlushed(event: Flushed): void {}
+export function handleFlushed(event: Flushed): void {
+	let stkr = Staker.load(event.address.toHexString()) as Staker
+	stkr.curveBalance = event.params.currencyAmount.toBigDecimal()
+	stkr.save()
+}
 
-export function handleJoined(event: Joined): void {}
+export function handleJoined(event: Joined): void {
+	let stkr = Staker.load(event.params.staker.toHexString()) as Staker
+	if (stkr === null){
+		createStaker(event.params.staker)
+		stkr.stake = event.params.deposited.toBigDecimal()
+		stkr.mintedLT = event.params.minted.toBigDecimal()
+		stkr.joinedAtBlockNumber = event.block.number
+	} else {
+		stkr = Staker.load(event.params.staker.toHexString()) as Staker
+		stkr.stake = stkr.stake.plus(event.params.deposited.toBigDecimal())
+		stkr.mintedLT = stkr.mintedLT.plus(event.params.minted.toBigDecimal())
+	}
+	stkr.save()
+	
+}
 
-export function handleJoiningFeeChanged(event: JoiningFeeChanged): void {}
+export function handleJoiningFeeChanged(event: JoiningFeeChanged): void {
+	
+}
 
-export function handleOwnershipTransferred(event: OwnershipTransferred): void {}
+export function handleOwnershipTransferred(event: OwnershipTransferred): void {
+	
+}
 
-export function handlePulled(event: Pulled): void {}
+export function handlePulled(event: Pulled): void {
+	let stkr = Staker.load(event.address.toHexString())
+	stkr.curveBalance = stkr.curveBalance.minus(event.params.yAmount.toBigDecimal())
+	stkr.save()
+}
 
-export function handleRepaid(event: Repaid): void {}
+export function handleRepaid(event: Repaid): void {
+	let brwr = Borrower.load(event.params.payer.toHexString())
+	brwr.debt = brwr.debt.minus(event.params.amount.toBigDecimal())
+	if (brwr.debt.equals(BigInt.fromI32(0).toBigDecimal())){
+		brwr.repayedLoanAtBlockNumber = event.block.number
+	}
+	brwr.save()	
+}
 
-export function handleTransfer(event: Transfer): void {}
+export function handleTransfer(event: Transfer): void {
+	
+}
+
+
