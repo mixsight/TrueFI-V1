@@ -33,10 +33,10 @@ export function handleBorrow(event: Borrow): void {
 	let brwr = Borrower.load(event.params.borrower.toHexString()) as Borrower
 	if ( brwr === null){
 		createBorrower(event.params.borrower)
+		brwr = Borrower.load(event.params.borrower.toHexString()) as Borrower
 		brwr.debt = event.params.amount.toBigDecimal()
 		brwr.joinedAtBlockNumber = event.block.number
 	} else {
-		brwr = Borrower.load(event.params.borrower.toHexString()) as Borrower
 		brwr.debt = brwr.debt.plus(event.params.amount.toBigDecimal())
 	}
 	brwr.save()
@@ -68,16 +68,15 @@ export function handleJoined(event: Joined): void {
 	let stkr = Staker.load(event.params.staker.toHexString()) as Staker
 	if (stkr === null){
 		createStaker(event.params.staker)
+		stkr = Staker.load(event.params.staker.toHexString()) as Staker
 		stkr.stake = event.params.deposited.toBigDecimal()
 		stkr.mintedLT = event.params.minted.toBigDecimal()
 		stkr.joinedAtBlockNumber = event.block.number
 	} else {
-		stkr = Staker.load(event.params.staker.toHexString()) as Staker
 		stkr.stake = stkr.stake.plus(event.params.deposited.toBigDecimal())
 		stkr.mintedLT = stkr.mintedLT.plus(event.params.minted.toBigDecimal())
 	}
 	stkr.save()
-	
 }
 
 export function handleJoiningFeeChanged(event: JoiningFeeChanged): void {
